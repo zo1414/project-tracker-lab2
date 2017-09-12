@@ -33,8 +33,11 @@ def get_student_by_github(github):
 
     row = db_cursor.fetchone()
 
-    print "Student: {first} {last}\nGitHub account: {acct}".format(
-        first=row[0], last=row[1], acct=row[2])
+    if row:
+        print "Student: {first} {last}\nGitHub account: {acct}".format(
+            first=row[0], last=row[1], acct=row[2])
+    else:
+        print "Student not found"
 
 
 def make_new_student(first_name, last_name, github):
@@ -71,8 +74,11 @@ def get_project_by_title(title):
 
     row = db_cursor.fetchone()
 
-    print "Title: {title}\nDescription: {des}\nMax Grade: {grade}".format(
-        title=row[1], des=row[2], grade=row[3])
+    if row:
+        print "Title: {title}\nDescription: {des}\nMax Grade: {grade}".format(
+            title=row[1], des=row[2], grade=row[3])
+    else:
+        print "Project not found"
 
 
 def get_grade_by_github_title(github, title):
@@ -88,7 +94,10 @@ def get_grade_by_github_title(github, title):
 
     row = db_cursor.fetchone()
 
-    print "Grade: {grade}".format(grade=row[0])
+    if row:
+        print "Grade: {grade}".format(grade=row[0])
+    else:
+        print "Grade not found"
 
 
 def assign_grade(github, title, grade):
@@ -108,6 +117,42 @@ def assign_grade(github, title, grade):
     print "Successfully input grade for {git}".format(git=github)
 
 
+def add_project(title, description, max_grade):
+    """Add a project to the projects database"""
+
+    QUERY = """
+        INSERT INTO projects(title, description, max_grade)
+        VALUES (:title, :description, :max_grade)
+        """
+
+    db.session.execute(QUERY, {'title': title,
+                               'description': description,
+                               'max_grade': max_grade})
+    db.session.commit()
+
+    print "Successfully added {project}".format(project=title)
+
+
+def get_all_grades(github):
+    """Prints all of the project grades for a student"""
+
+    QUERY = """
+        SELECT grade, project_title
+        FROM grades
+        WHERE student_github = :github
+        """
+
+    db_cursor = db.session.execute(QUERY, {'github': github})
+
+    grades = db_cursor.fetchall()
+
+    if grades:
+        for grade, project in grades:
+            print "Title: {title}, Grade: {grade}".format(title=project, grade=grade)
+    else:
+        print "Student not found"
+
+
 def handle_input():
     """Main loop.
 
@@ -122,25 +167,38 @@ def handle_input():
         command = tokens[0]
         args = tokens[1:]
 
-        if command == "student":
-            github = args[0]
-            get_student_by_github(github)
+        if len(args) > 0:
 
-        elif command == "new_student":
-            first_name, last_name, github = args  # unpack!
-            make_new_student(first_name, last_name, github)
+            if command == "student":
+                github = args[0]
+                get_student_by_github(github)
 
-        elif command == "project":
-            title = args[0]
-            get_project_by_title(title)
+            elif command == "new_student":
+                first_name, last_name, github = args  # unpack!
+                make_new_student(first_name, last_name, github)
 
-        elif command == "get_grade":
-            github, title = args
-            get_grade_by_github_title(github, title)
+            elif command == "project":
+                title = args[0]
+                get_project_by_title(title)
 
-        elif command == "give_grade":
-            github, title, grade = args
-            assign_grade(github, title, grade)
+            elif command == "get_grade":
+                # github, title = args
+                github = args[0]
+                title = args[1:]
+                get_grade_by_github_title(github, title)
+
+            elif command == "give_grade":
+                github, title, grade = args
+                assign_grade(github, title, grade)
+
+            elif command == "add_project":
+                title, max_grade = args[:2]
+                description = " ".join(args[2:])
+                add_project(title, description, max_grade)
+
+            elif command == "grades":
+                github = args[0]
+                get_all_grades(github)
 
         else:
             if command != "quit":
